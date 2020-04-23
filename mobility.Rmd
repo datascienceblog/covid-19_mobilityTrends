@@ -1,0 +1,91 @@
+---
+title: 'COVID-19: Analyze Mobility Trends'
+output: html_document
+---
+
+
+```{r include=FALSE}
+source("mobility.R", echo = FALSE, keep.source = TRUE)
+```
+
+The global lockdown has slowed down mobility considerably. This can be seen in the data produced by our ubiquitous mobile phones.
+Apple is kind enough to make those anonymized and aggregated data available to the public. If you want to learn how to get a handle on those data and analyze trends with R read on!
+
+To download the current data set go to the following website, click on “All Data CSV”: [Apple Maps: Mobility Trends Reports](https://www.apple.com/covid19/mobility) and move the file to your data folder.
+
+
+To get an overview we first load the data into R and print the available regions (data for countries and many cities are available) and transportation types (“driving”, “transit” and “walking”):
+
+```{r echo=TRUE}
+mobility <- read.csv("data/applemobilitytrends-2020-04-21.csv") # change path and file name accordingly
+levels(mobility$region)
+```
+
+```{r echo=TRUE}
+levels(mobility$transportation_type)
+```
+
+We now create a function **mobi_trends** to return the data in a well-structured format. The default **plot = TRUE** plots the data, **plot = FALSE** returns a named vector with the raw data for further investigation:
+
+```{r echo=TRUE}
+mobi_trends <- function(reg = "United States", trans = "driving", plot = TRUE, addsmooth = TRUE) {
+  data <- subset(mobility, region == reg & transportation_type == trans)[4:ncol(mobility)]
+  dates <- as.Date(sapply(names(data), function(x) substr(x, start = 2, stop = 11)), "%Y.%m.%d")
+  values <- as.numeric(data)
+  series <- setNames(values, dates)
+  if (plot) {
+    plot(dates, values, main = paste("Mobility Trends", reg, trans), 
+         xlab = "", ylab = "", type = "l", col = "blue", lwd = 3)
+    if (addsmooth) {
+      lines(dates, values, col = "lightblue", lwd = 3)
+      lines(supsmu(dates, values), col = "blue", lwd = 2)
+    }
+    abline(h = 100)
+    abline(h = c(0, 20, 40, 60, 80, 120, 140, 160, 180, 200), lty = 3)
+    invisible(series)
+  } else {
+    series
+  }
+}
+
+mobi_trends()
+```
+
+The drop is quite dramatic… by 60%! Even more dramatic, of course, is the situation in Italy:
+
+```{r echo=TRUE}
+mobi_trends(reg = "Italy")
+```
+
+A drop by 80%! The same plot for Frankfurt:
+
+```{r echo=TRUE}
+mobi_trends(reg = "Frankfurt")
+```
+
+Obviously in Germany people are taking those measures less seriously lately, there seems to be a clear upward trend. This can also be seen in the German “walking” data:
+
+```{r echo=TRUE}
+mobi_trends(reg = "Germany", trans = "walking")
+```
+
+What is interesting is that before the lockdown “transit” mobility seems to have accelerated before plunging:
+
+```{r echo=TRUE}
+mobi_trends(reg = "Germany", trans = "transit")
+```
+
+You can also plot the raw numbers only, without an added smoother (option **addsmooth = FALSE**):
+
+```{r echo=TRUE}
+mobi_trends(reg = "London", trans = "walking", addsmooth = FALSE)
+```
+
+And as I said, you can conduct your own analyses on the formatted vector of the time series (option **plot = FALSE**)…
+
+```{r echo=TRUE}
+mobi_trends(reg = "London", trans = "walking", plot = FALSE)
+```
+
+…as we have only scratched the surface of the many possibilities here, there are many interesting analyses, like including the data in epidemiological models or simply calculate correlations with new infections/deaths!
+
